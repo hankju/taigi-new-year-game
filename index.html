@@ -126,8 +126,8 @@ em{font-style:normal;color:var(--red-2);background:var(--gold-soft);border-radiu
       <p>食物配好話，押韻押予著！</p>
     </div>
     <div class="modes">
-      <button class="mode" data-go="float"><span class="ic">🎈</span><span><b>好話飄飄</b><small>食物飄上來，點出跟好話押韻的那個。60 秒，點錯扣 3 秒。</small></span><span class="best" data-best="float"></span></button>
-      <button class="mode" data-go="memo"><span class="ic">🧧</span><span><b>翻紅包</b><small>翻開兩個紅包，上下半句押韻就配成一對。3 關，越快越高分。</small></span><span class="best" data-best="memo"></span></button>
+      <button class="mode" data-go="float"><span class="ic">🎈</span><span><b>好話飄飄</b><small>食物飄上來，60 秒內點中 10 個押韻的。點錯扣 3 秒。</small></span><span class="best" data-best="float"></span></button>
+      <button class="mode" data-go="memo"><span class="ic">🧧</span><span><b>翻紅包</b><small>翻開兩個紅包，上下半句押韻就配成一對。3 關，剩越多秒分越高。</small></span><span class="best" data-best="memo"></span></button>
       <button class="mode" data-go="quiz"><span class="ic">🧨</span><span><b>搶答放炮</b><small>10 題，每題 8 秒，選出押韻的另一半，越快答分越高。</small></span><span class="best" data-best="quiz"></span></button>
       <button class="mode" data-go="list"><span class="ic">📜</span><span><b>好話題庫</b><small>看全部的吉祥話，押韻的字有標色。</small></span><span></span></button>
     </div>
@@ -137,7 +137,7 @@ em{font-style:normal;color:var(--red-2);background:var(--gold-soft);border-radiu
   <section class="screen" id="float" hidden>
     <div class="hud"><button class="back">‹ 離開</button><div class="stat"><span>分數 <b class="sc">0</b></span><span>⏱ <b class="tm">60</b></span></div></div>
     <div class="timebar"><i></i></div>
-    <div class="prompt"><small>點出押韻的食物</small><div class="txt" id="fPrompt"></div></div>
+    <div class="prompt"><small id="fHint">點出押韻的食物</small><div class="txt" id="fPrompt"></div></div>
     <div class="field" id="field"></div>
   </section>
 
@@ -163,7 +163,7 @@ em{font-style:normal;color:var(--red-2);background:var(--gold-soft);border-radiu
 
   <section class="screen over" id="over" hidden>
     <h2 id="oTitle">時間到！</h2>
-    <p>這回得分</p>
+    <p>這回得分（滿分 100）</p>
     <div class="big" id="oScore">0</div>
     <p id="oBest"></p>
     <div class="btns"><button class="btn" id="oAgain">再玩一次</button><button class="btn ghost" id="oHome">回首頁</button></div>
@@ -193,16 +193,15 @@ const D=[
   {u:'食雞',l:'予你會起家',g:'e',ut:'ke',lt:'ke',ic:'🐔'},
   {u:'食鳳梨',l:'予你旺旺來',g:'ai',ut:'lâi',lt:'lâi',ic:'🍍'},
   {u:'食魚',l:'予你年年有餘',g:'i',ut:'hî',lt:'î',ic:'🐟'},
-  {u:'食湯圓',l:'予你全家大團圓',g:'i',ut:'înn',lt:'înn',ic:'🥣'},
 ];
 const $=s=>document.querySelector(s);
 const rnd=a=>a[Math.floor(Math.random()*a.length)];
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
-const hl=s=>'<span>'+s.slice(0,-1)+'<em>'+s.slice(-1)+'</em></span>';
+const hl=s=>'<span>'+s+'</span>';
 const rhymeText=(a,b)=>`${a.u.slice(-1)} ${a.ut} ／ ${b.l.slice(-1)} ${b.lt}`;
 
 // 最高分（只存在這支手機）
-const store={get(k){try{return +localStorage.getItem('hy_'+k)||0}catch(e){return 0}},set(k,v){try{localStorage.setItem('hy_'+k,v)}catch(e){}}};
+const store={get(k){try{return +localStorage.getItem('hy2_'+k)||0}catch(e){return 0}},set(k,v){try{localStorage.setItem('hy2_'+k,v)}catch(e){}}};
 function showBest(){document.querySelectorAll('[data-best]').forEach(el=>{const b=store.get(el.dataset.best);el.textContent=b?'最高 '+b:''})}
 
 // 音效
@@ -242,9 +241,9 @@ function setBar(scr,frac){const bar=scr.querySelector('.timebar');bar.querySelec
 // ===== 好話飄飄 =====
 function startFloat(){
   const scr=$('#float'),field=$('#field');field.innerHTML='';
-  const T=60;let time=T,score=0,combo=0,P=null,promptAt=0,tokens=[],spawnCd=0,raf,last=performance.now(),clock=0,alive=true;
+  const T=60,GOAL=10;let time=T,score=0,combo=0,hits=0,P=null,promptAt=0,tokens=[],spawnCd=0,raf,last=performance.now(),clock=0,alive=true;
   const sc=scr.querySelector('.sc'),tm=scr.querySelector('.tm');
-  function newPrompt(){let n;do{n=rnd(D)}while(P&&n.g===P.g);P=n;promptAt=clock;$('#fPrompt').innerHTML=hl(P.l)}
+  function newPrompt(){let n;do{n=rnd(D)}while(P&&n.g===P.g);P=n;promptAt=clock;$('#fPrompt').innerHTML=hl(P.l);$('#fHint').textContent=`點出押韻的食物（${hits+1}／${GOAL}）`}
   function spawn(){const W=field.clientWidth,H=field.clientHeight;
     const good=tokens.some(t=>t.it.g===P.g);
     let it;if(!good||Math.random()<.2){it=rnd(D.filter(d=>d.g===P.g))}else{it=rnd(D.filter(d=>d.g!==P.g))}
@@ -253,10 +252,10 @@ function startFloat(){
     el.addEventListener('pointerdown',e=>{e.preventDefault();hit(t)});field.appendChild(el);tokens.push(t)}
   function remove(t){t.el.remove();tokens=tokens.filter(x=>x!==t)}
   function hit(t){if(!alive||t.dead)return;const[x,y]=center(t.el);
-    if(t.it.g===P.g){t.dead=true;combo++;const pts=100+Math.max(0,Math.round(100-(clock-promptAt)*15))+(combo-1)*20;score+=pts;sc.textContent=score;
-      sfx.ok();burst(x,y,pts);toast(`${hl(t.it.u)}，${hl(P.l)}　<small>${rhymeText(t.it,P)}</small>`+(combo>1?`　🔥${combo} 連擊`:''));remove(t);newPrompt()}
+    if(t.it.g===P.g){t.dead=true;combo++;const pts=5+Math.max(0,Math.round(5-(clock-promptAt)*.8));score+=pts;hits++;sc.textContent=score;
+      sfx.ok();burst(x,y,pts);toast(`${hl(t.it.u)}，${hl(P.l)}　<small>${rhymeText(t.it,P)}</small>`+(combo>1?`　🔥${combo} 連擊`:''));remove(t);if(hits>=GOAL){alive=false;setTimeout(()=>gameOver('float',score,'10 個全點中！'),500);return}newPrompt()}
     else{combo=0;time=Math.max(0,time-3);sfx.bad();t.el.classList.remove('wrong');void t.el.offsetWidth;t.el.classList.add('wrong');toast('押無著！扣 3 秒')}}
-  function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;time-=dt;
+  function loop(now){if(!alive)return;const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;time-=dt;
     if(time<=0){alive=false;gameOver('float',score,'時間到！');return}
     tm.textContent=Math.ceil(time);setBar(scr,time/T);
     spawnCd-=dt;if(spawnCd<=0&&tokens.length<7){spawn();spawnCd=.75+Math.random()*.4}
@@ -283,7 +282,7 @@ function startQuiz(){
   function answer(b,P,up,timeout){if(locked)return;locked=true;cancelAnimationFrame(timer);
     const btns=[...$('#qOpts').children],target=order[qi-1];
     btns.forEach(x=>{if(x._o.g===target.g)x.classList.add('right');else if(x!==b)x.classList.add('no')});
-    if(!timeout&&b._o.g===target.g){combo++;const left=Math.max(0,LIM-(performance.now()-t0)/1000);const pts=100+Math.round(left/LIM*100)+(combo-1)*20;score+=pts;sc.textContent=score;cb.textContent=combo;sfx.ok();const[x,y]=center(b);burst(x,y,pts);toast(rhymeText(target,target))}
+    if(!timeout&&b._o.g===target.g){combo++;const left=Math.max(0,LIM-(performance.now()-t0)/1000);const pts=5+Math.round(left/LIM*5);score+=pts;sc.textContent=score;cb.textContent=combo;sfx.ok();const[x,y]=center(b);burst(x,y,pts);toast(rhymeText(target,target))}
     else{combo=0;cb.textContent=0;if(b)b.classList.add('bad');sfx.bad();toast(timeout?'時間到！':'押無著！')}
     setTimeout(next,timeout||!(b&&b._o.g===target.g)?1300:800)}
   sc.textContent=0;cb.textContent=0;next();
@@ -302,10 +301,10 @@ function startMemo(){
   function flip(b){if(busy||!alive||b.classList.contains('open'))return;sfx.flip();b.classList.add('open');open.push(b);
     if(open.length<2)return;const[a,c]=open;open=[];
     const ok=a._c.s!==c._c.s&&a._c.d.g===c._c.d.g;
-    if(ok){combo++;const pts=100+(combo-1)*30;score+=pts;sc.textContent=score;matched++;
+    if(ok){combo++;const pts=5;score+=pts;sc.textContent=score;matched++;
       setTimeout(()=>{a.classList.add('done');c.classList.add('done');sfx.ok();const[x,y]=center(c);burst(x,y,pts);
         const up=a._c.s==='u'?a._c.d:c._c.d,lo=a._c.s==='l'?a._c.d:c._c.d;toast(rhymeText(up,lo))},250);
-      if(matched===4){busy=true;setTimeout(()=>{busy=false;if(round>=ROUNDS){const bonus=Math.ceil(time)*10;score+=bonus;gameOver('memo',score,`全部翻完！時間獎勵 +${bonus}`)}else{toast('過關！下一關');deal()}},900)}}
+      if(matched===4){busy=true;setTimeout(()=>{busy=false;if(round>=ROUNDS){const bonus=Math.round(Math.max(0,time)/T*40);score+=bonus;gameOver('memo',score,`全部翻完！時間獎勵 +${bonus}`)}else{toast('過關！下一關');deal()}},900)}}
     else{combo=0;busy=true;setTimeout(()=>{sfx.bad();a.classList.remove('open');c.classList.remove('open');busy=false},750)}}
   function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;time-=dt;
     if(time<=0){alive=false;gameOver('memo',score,'時間到！');return}
