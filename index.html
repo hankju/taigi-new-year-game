@@ -96,6 +96,23 @@ em{font-style:normal;color:var(--red-2);background:var(--gold-soft);border-radiu
 .row .tl{font-size:13px;color:#7a4a3a}
 .row .g{font-size:12px;color:var(--red-2);font-weight:700}
 
+/* 我的成績 */
+.hbest{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hbest div{background:var(--paper);color:var(--ink);border-radius:12px;padding:8px;text-align:center}
+.hbest small{display:block;font-size:12px;color:#7a4a3a}
+.hbest b{font-family:var(--display);font-size:28px;color:var(--red-2);font-variant-numeric:tabular-nums}
+.hrow{background:var(--paper);color:var(--ink);border-radius:10px;padding:8px 12px;display:grid;grid-template-columns:2.2em 1fr auto;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.hrow .no{color:#7a4a3a;font-size:13px}
+.hrow .m{font-size:15px}
+.hrow .m small{display:block;color:#7a4a3a;font-size:12px}
+.hrow .s{font-family:var(--display);font-size:24px}
+.hrow.top{background:var(--gold-soft);outline:2px solid var(--gold)}
+.hrow.top .s::after{content:" 🏆";font-size:16px}
+.htabs{display:flex;gap:6px;flex-wrap:wrap}
+.htabs button{flex:1;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:20px;padding:6px 8px;font-size:14px}
+.htabs button[aria-pressed="true"]{background:var(--gold);color:var(--red-deep);font-weight:700}
+.empty{color:var(--gold-soft);text-align:center;padding:24px 0}
+
 /* 結算 */
 .over{align-items:center;justify-content:center;text-align:center}
 .over h2{font-family:var(--display);font-size:40px;color:var(--gold);margin:0}
@@ -129,7 +146,8 @@ em{font-style:normal;color:var(--red-2);background:var(--gold-soft);border-radiu
       <button class="mode" data-go="float"><span class="ic">🎈</span><span><b>好話飄飄</b><small>食物飄上來，60 秒內點中 10 個押韻的。點錯扣 3 秒。</small></span><span class="best" data-best="float"></span></button>
       <button class="mode" data-go="memo"><span class="ic">🧧</span><span><b>翻紅包</b><small>翻開兩個紅包，上下半句押韻就配成一對。3 關，剩越多秒分越高。</small></span><span class="best" data-best="memo"></span></button>
       <button class="mode" data-go="quiz"><span class="ic">🧨</span><span><b>搶答放炮</b><small>10 題，每題 8 秒，選出押韻的另一半，越快答分越高。</small></span><span class="best" data-best="quiz"></span></button>
-      <button class="mode" data-go="list"><span class="ic">📜</span><span><b>好話題庫</b><small>看全部的吉祥話，押韻的字有標色。</small></span><span></span></button>
+      <button class="mode" data-go="hist"><span class="ic">🏆</span><span><b>我的成績</b><small>每一局的分數都記在這裡，最高分會標出來。</small></span><span></span></button>
+      <button class="mode" data-go="list"><span class="ic">📜</span><span><b>好話題庫</b><small>看全部的吉祥話和押韻字的台羅。</small></span><span></span></button>
     </div>
     <div class="foot">押同一個韻就算對，對調也通！</div>
   </section>
@@ -154,6 +172,13 @@ em{font-style:normal;color:var(--red-2);background:var(--gold-soft);border-radiu
     <div class="timebar"><i></i></div>
     <div class="round" id="mRound"></div>
     <div class="grid" id="mGrid"></div>
+  </section>
+
+  <section class="screen" id="hist" hidden>
+    <div class="hud"><button class="back">‹ 回首頁</button></div>
+    <div class="hbest" id="hBest"></div>
+    <div class="htabs" id="hTabs"></div>
+    <div class="list" id="hList"></div>
   </section>
 
   <section class="screen" id="list" hidden>
@@ -202,6 +227,20 @@ const rhymeText=(a,b)=>`${a.u.slice(-1)} ${a.ut} ／ ${b.l.slice(-1)} ${b.lt}`;
 
 // 最高分（只存在這支手機）
 const store={get(k){try{return +localStorage.getItem('hy2_'+k)||0}catch(e){return 0}},set(k,v){try{localStorage.setItem('hy2_'+k,v)}catch(e){}}};
+// 每局成績紀錄（只存在這支手機）
+function getHist(){try{return JSON.parse(localStorage.getItem('hy2_hist'))||[]}catch(e){return[]}}
+function addHist(m,s){const h=getHist();h.push({m,s,t:Date.now()});try{localStorage.setItem('hy2_hist',JSON.stringify(h.slice(-300)))}catch(e){}}
+let histFilter='all';
+function fmtTime(t){const d=new Date(t),p=n=>String(n).padStart(2,'0');return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`}
+function renderHist(){const h=getHist();
+  $('#hBest').innerHTML=['float','memo','quiz'].map(m=>{const xs=h.filter(r=>r.m===m);return `<div><small>${TITLE[m]} 最高</small><b>${xs.length?Math.max(...xs.map(r=>r.s)):'—'}</b><small>玩了 ${xs.length} 次</small></div>`}).join('');
+  $('#hTabs').innerHTML=[['all','全部'],['float','好話飄飄'],['memo','翻紅包'],['quiz','搶答放炮']].map(([k,n])=>`<button data-f="${k}" aria-pressed="${histFilter===k}">${n}</button>`).join('');
+  $('#hTabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{histFilter=b.dataset.f;renderHist()});
+  const rows=h.map((r,i)=>({...r,i})).filter(r=>histFilter==='all'||r.m===histFilter);
+  if(!rows.length){$('#hList').innerHTML='<div class="empty">還沒有紀錄，先去玩一局吧！</div>';return}
+  const best={};h.forEach(r=>{if(!best[r.m]||r.s>best[r.m].s)best[r.m]=r});
+  const no={};h.forEach(r=>{no[r.m]=(no[r.m]||0)+1;r.n=no[r.m]});
+  $('#hList').innerHTML=rows.reverse().map(r=>`<div class="hrow${best[r.m]===h[r.i]?' top':''}"><span class="no">#${h[r.i].n}</span><span class="m">${TITLE[r.m]}<small>${fmtTime(r.t)}</small></span><span class="s">${r.s}</span></div>`).join('')}
 function showBest(){document.querySelectorAll('[data-best]').forEach(el=>{const b=store.get(el.dataset.best);el.textContent=b?'最高 '+b:''})}
 
 // 音效
@@ -225,14 +264,15 @@ function go(id){if(stopFn){stopFn();stopFn=null}
   if(id==='float'){lastMode=id;startFloat()}
   if(id==='quiz'){lastMode=id;startQuiz()}
   if(id==='memo'){lastMode=id;startMemo()}
-  if(id==='list')renderList()}
+  if(id==='list')renderList();
+  if(id==='hist')renderHist()}
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{tone(660,.05);go(b.dataset.go)});
 document.querySelectorAll('.back').forEach(b=>b.onclick=()=>go('home'));
 $('#oAgain').onclick=()=>go(lastMode);
 $('#oHome').onclick=()=>go('home');
 const TITLE={float:'好話飄飄',quiz:'搶答放炮',memo:'翻紅包'};
 function gameOver(mode,score,title){if(stopFn){stopFn();stopFn=null}
-  const best=store.get(mode),isNew=score>best;if(isNew)store.set(mode,score);
+  const best=store.get(mode),isNew=score>best;if(isNew)store.set(mode,score);addHist(mode,score);
   document.querySelectorAll('.screen').forEach(s=>s.hidden=s.id!=='over');
   $('#oTitle').textContent=title;$('#oScore').textContent=score;
   $('#oBest').textContent=isNew&&score>0?'🎉 新紀錄！':`${TITLE[mode]} 最高分：${Math.max(best,score)}`;sfx.end()}
