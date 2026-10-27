@@ -1,9 +1,8 @@
-# 過年好話押韻王
+# 過年好話押韻王（已搬家）
 
-台語過年吉祥話押韻小遊戲，手機瀏覽器就能玩。
+這個遊戲已併入「台語小遊戲」網站，成為其中的「過年好話」分頁：
 
-- 好話飄飄：點出跟好話押韻的食物（60 秒）
-- 翻紅包：翻牌配對押韻的上下半句（3 關）
-- 搶答放炮：10 題限時選擇題
+- 新網址：https://hankju.github.io/taigi-games/games/newyear/
+- 新 repo：https://github.com/hankju/taigi-games（`games/newyear/` 資料夾）
 
-遊玩網址：https://hankju.github.io/taigi-new-year-game/
+本 repo 的 `index.html` 只剩自動導向新網址；原本的遊戲程式碼請看 git 歷史或新 repo。
